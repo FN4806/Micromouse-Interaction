@@ -2,7 +2,10 @@
 #include <U8g2lib.h>
 #include <DFRobotDFPlayerMini.h>
 
-#define FPSerial Serial1
+#include "settings.h"
+#include "pi2pi_serial.h"
+
+#define DFPSerial Serial1
 #define CommSerial Serial2
 
 // -------- * BITMAPS * -------- //
@@ -26,6 +29,32 @@ static const unsigned char image_Arrow_Left_bits[] = {0x00,0x00,0x00,0x00,0x20,0
 static const unsigned char image_Win_95_bits[] = {0x00,0x00,0x00,0x1e,0x80,0x7f,0xc1,0xed,0xf5,0xcc,0xfc,0xcc,0xc1,0xde,0xf5,0xff,0xfc,0xed,0xc1,0xcc,0xf5,0xcc,0xfc,0xde,0xc1,0xff,0xf5,0xe1,0x7c,0x80,0x00,0x00};
 // 16x16 Windows XP Icon
 static const unsigned char image_Win_XP_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x82,0x0c,0xc6,0x7c,0x6c,0x4c,0x38,0x4c,0x38,0x7c,0x6c,0x0c,0xc6,0x0c,0x82,0x0c,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+// 16x16 Black Circle Icon
+static const unsigned char image_Black_Circle_bits[] = {0x00,0x00,0xc0,0x03,0x30,0x0c,0x08,0x10,0x04,0x20,0x04,0x20,0x02,0x40,0x02,0x40,0x02,0x40,0x02,0x40,0x04,0x20,0x04,0x20,0x08,0x10,0x30,0x0c,0xc0,0x03,0x00,0x00};
+// 16x16 White Circle Icon
+static const unsigned char image_White_Circle_bits[] = {0x00,0x00,0xc0,0x03,0xf0,0x0f,0xf8,0x1f,0xfc,0x3f,0xfc,0x3f,0xfe,0x7f,0xfe,0x7f,0xfe,0x7f,0xfe,0x7f,0xfc,0x3f,0xfc,0x3f,0xf8,0x1f,0xf0,0x0f,0xc0,0x03,0x00,0x00};
+// 16x16 LDR Calibration Icon
+static const unsigned char image_Calibration_Icon_bits[] = {0x00,0x00,0x01,0x00,0x02,0x00,0x14,0x00,0x18,0x00,0x9c,0x03,0x40,0x04,0x20,0x08,0xd0,0x17,0x7c,0x7c,0xd0,0x17,0x20,0x08,0x40,0x04,0x80,0x03,0x00,0x00,0x00,0x00};
+
+// -------- Mouse GIF Frames -------- //
+static const unsigned char image_mouse_frame_0_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xe0,0x1b,0x00,0x38,0x00,0xf0,0x67,0x00,0x70,0x00,0xf8,0xe7,0x00,0xc0,0x01,0xfc,0xbf,0x03,0x00,0x07,0xfe,0xff,0x03,0x00,0x0c,0xff,0xff,0x01,0x00,0xf8,0xf1,0x07,0x00,0x00,0x00,0x40,0x01,0x00,0x00,0x00,0xc0,0x01,0x00,0x00,0x00,0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+static const unsigned char image_mouse_frame_1_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x30,0x00,0x00,0x00,0xc0,0xcf,0x00,0x00,0x00,0xf0,0xcf,0x01,0x30,0x00,0xf0,0xbf,0x03,0xe0,0x00,0xf8,0xff,0x07,0x80,0x00,0xfc,0xff,0x03,0x00,0x03,0xff,0x1f,0x00,0x00,0xfe,0xff,0x0f,0x00,0x00,0x00,0x30,0x01,0x00,0x00,0x00,0x60,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+static const unsigned char image_mouse_frame_2_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x30,0x00,0x00,0x00,0xc0,0xcf,0x01,0x00,0x00,0xf0,0x4f,0x03,0x18,0x00,0xf8,0xff,0x07,0x30,0x00,0xfc,0xff,0x03,0x60,0x00,0xfc,0x1f,0x00,0x80,0x00,0xfe,0x0f,0x00,0x80,0x01,0xfe,0x07,0x00,0x00,0xff,0xff,0x01,0x00,0x00,0x00,0x18,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+static const unsigned char image_mouse_frame_3_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x30,0x00,0x00,0x00,0x00,0xc8,0x00,0x00,0x00,0xe0,0xcf,0x03,0x00,0x00,0xf0,0x7f,0x07,0x00,0x00,0xfc,0xff,0x0f,0x00,0x00,0xfc,0xff,0x07,0x00,0x00,0xfe,0x1f,0x00,0x00,0x00,0xfe,0x0f,0x00,0x00,0x80,0xff,0x3f,0x00,0x0c,0xf0,0x0f,0x00,0x00,0x30,0x38,0x02,0x00,0x00,0xe0,0x0f,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+static const unsigned char image_mouse_frame_4_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xf8,0x33,0x00,0x00,0x00,0xfc,0x4f,0x00,0x00,0x00,0xfe,0xcf,0x00,0x00,0xc0,0xff,0xff,0x01,0x00,0x70,0xff,0x7f,0x01,0x00,0x3c,0xfe,0xff,0x03,0x00,0x0e,0xfe,0xff,0x03,0x00,0x03,0x01,0x40,0x00,0x00,0x01,0x01,0x00,0x00,0xc0,0x00,0x00,0x00,0x00,0x38,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+static const unsigned char image_mouse_frame_5_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xf0,0x07,0x00,0x00,0xf8,0xff,0x0f,0x00,0x00,0x1f,0xff,0x1f,0x00,0x80,0x01,0xe0,0x7f,0x00,0xc0,0x00,0xf0,0x9f,0x00,0x20,0x00,0xf0,0x9f,0x01,0x10,0x00,0x40,0xff,0x03,0x08,0x00,0x20,0xfe,0x02,0x00,0x00,0x00,0xf0,0x03,0x00,0x00,0x00,0xe0,0x07,0x00,0x00,0x00,0x20,0x00,0x00,0x00,0x00,0x40,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+static const unsigned char image_mouse_frame_6_bits[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xf0,0x01,0x00,0x00,0x00,0xfc,0x03,0x00,0xf8,0x83,0xff,0x07,0x00,0x00,0xfc,0xff,0x0f,0x00,0x00,0xf0,0xff,0x7f,0x00,0x00,0x00,0xfc,0x9f,0x00,0x00,0x00,0xf8,0x9f,0x00,0x00,0x00,0xf0,0xff,0x01,0x00,0x00,0xa0,0x7f,0x03,0x00,0x00,0x10,0xfe,0x07,0x00,0x00,0x00,0xe8,0x07,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+const unsigned char* const mouse_gif[7] = {
+  image_mouse_frame_0_bits,
+  image_mouse_frame_1_bits,
+  image_mouse_frame_2_bits,
+  image_mouse_frame_3_bits,
+  image_mouse_frame_4_bits,
+  image_mouse_frame_5_bits,
+  image_mouse_frame_6_bits
+};
+
 // -------- Static UI -------- //
 // 1x61 Scroll Bar Background
 static const unsigned char image_Scroll_Bar_bits[] = {0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01,0x00,0x01};
@@ -39,20 +68,16 @@ static const unsigned char image_Angry_Face_bits[] = {0x00,0xc0,0x00,0x00,0x00,0
 
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 DFRobotDFPlayerMini df_player;
-
-// Serial for MCU -> MCU Communications
-// Pins
-constexpr uint tx_pin = 4;
-constexpr uint rx_pin = 5; 
-//SerialPIO CommSerial(tx_pin, rx_pin);
+Pi2PiSerial mcu_comms;
 
 // ------ MAIN MENU ITEMS ARRAYS ------
-const int MAIN_NUM_ITEMS = 4;
+const int MAIN_NUM_ITEMS = 5;
 const unsigned char* const main_menu_icons[MAIN_NUM_ITEMS] = {
   image_Line_Icon_bits,
   image_Combat_Icon_bits,
   // -- Extra Menus --
   image_Music_Icon_bits,
+  image_Calibration_Icon_bits,
   // -- End --
   image_Avoid_Icon_bits
 };
@@ -62,6 +87,7 @@ const char* const main_menu_items [MAIN_NUM_ITEMS] = {
 
   // -- Extra menus --
   "Music Options",
+  "Calibration",
 
   // -- End --
   "Obst. Avoidance"
@@ -93,10 +119,24 @@ const char* const startup_menu_items[STARTUP_MENU_ITEMS] = {
   "Return"
 };
 
+// ------ CALIBRATION MENU ------
+const int CALIBRATION_NUM_ITEMS = 3;
+const unsigned char* const calibration_menu_icons[CALIBRATION_NUM_ITEMS] = {
+  image_Black_Circle_bits,
+  image_White_Circle_bits,
+  image_Arrow_Left_bits
+};
+const char* const calibration_menu_items[CALIBRATION_NUM_ITEMS] = {
+  "Calibrate Black",
+  "Calibrate White",
+  "Return"
+};
+
 enum MenuState {
   MENU_MAIN = 0,
   MENU_SOUND,
   MENU_VOLUME,
+  MENU_CALIBRATION,
   MENU_STARTUP,
   MENU_COUNT
 };
@@ -118,6 +158,7 @@ const MenuDef menus[MENU_COUNT] = {
   {main_menu_items, main_menu_icons, MAIN_NUM_ITEMS},
   {sound_menu_items, sound_menu_icons, SOUND_NUM_ITEMS},
   {}, // Empty Menu State for Volume Since it uses a Different Menu Style
+  {calibration_menu_items, calibration_menu_icons, CALIBRATION_NUM_ITEMS}, // Empty Menu State for Calibration Since it uses a Different Menu Style
   {startup_menu_items, startup_menu_icons, STARTUP_MENU_ITEMS}
 };
 
@@ -132,7 +173,7 @@ enum DF_songs {
 };
 
 MenuState current_menu = MENU_MAIN;
-int current_mode = 0;
+int current_option = 0;
 int mode_engaged = 0;
 
 const int enc_pin_A = 11;
@@ -152,112 +193,7 @@ volatile int enc_accumulator = 0;
 
 volatile int menu_btn_flag = 0;
 
-int ui_volume = 5;
-
-// ------ SERIAL MCU<->MCU COMMUNICATION ------
-
-static char lin_buff[96];
-static size_t lin_len = 0;
-
-int startup_sound = DF_songs::WIN_95;
-int combat_music = DF_songs::DOOM;
-
-void send_line(const char* cmd) {
-  CommSerial.print(cmd);
-  CommSerial.print('\n');
-}
-
-bool poll_line(char* out, size_t out_size) {
-  while (CommSerial.available() > 0) {
-    char c = CommSerial.read();
-    if (lin_len >= sizeof(lin_buff) - 1) {
-      lin_len = 0;
-      continue;
-    } 
-    if (c == '\n') {
-      lin_buff[lin_len] = '\0';
-      strncpy(out, lin_buff, out_size);
-      out[out_size - 1] = '\0';
-      lin_len = 0;
-      return true;
-    }
-    lin_buff[lin_len++] = c;
-  }
-  return false;
-}
-
-int split_csv(char* str, char* out_tokens[], int max_tokens) {
-  int count = 0;
-  char* p = str;
-  while (count < max_tokens) {
-    out_tokens[count++] = p;
-    char* comma = strchr(p, ',');
-    if (!comma) break;
-    *comma = '\0';
-    p = comma + 1;
-  }
-  return count;
-}
-
-void request_settings() {
-  // Send commands to retrieve each of the stored settings from the EEPROM controlled by main pico
-  send_line("GET, startup");
-  send_line("GET, combat_music");
-  send_line("GET, volume");
-}
-
-void handle_main_line(char* line) {
-  size_t n = strlen(line);
-  if (n && line[n-1] == '\r') line[n-1] = '\0';
-
-  char* tokens[4] = {0};
-  int num_toks = split_csv(line, tokens, 4);
-  if (num_toks <= 0) return;
-
-  if (strcmp(tokens[0], "VAL") == 0 && num_toks >= 3) {
-    const char* key = tokens[1];
-    int val = atoi(tokens[2]);
-
-    if (strcmp(key, "startup") == 0) startup_sound = val;
-    else if (strcmp(key, "combat_music") == 0) combat_music = val;
-    else if (strcmp(key, "volume") == 0) {ui_volume = val; df_player.volume(ui_volume);}
-
-    return;
-  }
-
-  if (strcmp(tokens[0], "ACK") == 0) {
-    // Command was recieved by main pico, could clear a flag or change a ui icon, undecided if I will use this yet
-  }
-
-  if (strcmp(tokens[0], "ERR") == 0) {
-    // Error recieved from main pico, print to serial for debug, could set a flag or update a ui icon here too
-    Serial.print("MAIN PICO ERROR: ");
-    Serial.println(line);
-  }
-}
-
-void set_default_volume(uint8_t volume) {
-  volume = constrain(volume, 0, 30);
-  char cmd[48];
-  sprintf(cmd, "SET,volume,%d", volume);
-  send_line(cmd);
-}
-
-void set_combat_music(uint8_t song) {
-  song = constrain(song, 1, NUM_SONGS - 1);
-  char cmd[48];
-  sprintf(cmd, "SET,combat_music,%d", song);
-  send_line(cmd);
-}
-
-void select_mode(uint8_t mode) {
-  char cmd[48];
-  sprintf(cmd, "SET,mode,%d", mode);
-  send_line(cmd);
-}
-
-// --------------------------------------------
-
+// SERIAL HERE
 
 void encoder_switch() {
   static int last_pressed = 0;
@@ -287,11 +223,11 @@ void update_menu() {
   const MenuDef& menu = menus[current_menu];  
   
   if (menu.count == 0) return;
-  if (current_mode >= menu.count) current_mode = 0;
+  if (current_option >= menu.count) current_option = 0;
 
-  uint8_t top_option = (current_mode == 0) ? (menu.count - 1) : (current_mode - 1);
-  uint8_t middle_option = current_mode;
-  uint8_t bottom_option = (current_mode + 1) % menu.count;
+  uint8_t top_option = (current_option == 0) ? (menu.count - 1) : (current_option - 1);
+  uint8_t middle_option = current_option;
+  uint8_t bottom_option = (current_option + 1) % menu.count;
 
   u8g2.clearBuffer();
   u8g2.setFontMode(1);
@@ -311,7 +247,7 @@ void update_menu() {
   u8g2.drawStr(25, 60, menu.items[bottom_option]);
 
   int spacing = 64/menu.count;
-  int bar_spacing = current_mode * spacing;
+  int bar_spacing = current_option * spacing;
   u8g2.drawBox(124, bar_spacing, 3, spacing);
 
   u8g2.sendBuffer();
@@ -321,13 +257,13 @@ void update_menu() {
 
 void next_option() {
   const uint8_t num_options = menus[current_menu].count;
-  current_mode = (current_mode + 1) % num_options;
+  current_option = (current_option + 1) % num_options;
   update_menu();
 }
 
 void prev_option() {
   const uint8_t num_options = menus[current_menu].count;
-  current_mode = (current_mode == 0) ? (num_options - 1) : (current_mode - 1);
+  current_option = (current_option == 0) ? (num_options - 1) : (current_option - 1);
   update_menu();
 }
 
@@ -339,16 +275,16 @@ void display_face() {
   u8g2.setBitmapMode(1);
   u8g2.setFont(u8g2_font_6x13_tr);
 
-  switch (current_mode) {
+  switch (current_option) {
     case 0: // Line Following Mode
-      select_mode(MODE_LINE_FOLLOWING);
+      mcu_comms.SelectMode(MODE_LINE_FOLLOWING);
       break;
     case 1: // Combat Mode
       u8g2.drawXBM(14, 8, 101, 48, image_Angry_Face_bits);
-      select_mode(MODE_COMBAT);
+      mcu_comms.SelectMode(MODE_COMBAT);
       break;
     case (MAIN_NUM_ITEMS - 1): // Obstacle Avoidance Mode
-      select_mode(MODE_OBSTACLE_AVOIDANCE);
+      mcu_comms.SelectMode(MODE_OBSTACLE_AVOIDANCE);
       break;
     default:
       u8g2.drawStr(10,10,{"No Face Yet!"});
@@ -357,7 +293,7 @@ void display_face() {
 
   u8g2.sendBuffer();
 
-  switch (current_mode) {
+  switch (current_option) {
     case 0:
       df_player.playMp3Folder(DF_songs::TANK);
       break;
@@ -376,7 +312,7 @@ void volume_menu() {
   u8g2.setFont(u8g2_font_6x13_tr);
   u8g2.drawStr(25, 14, "Adjust Volume");
 
-  int volume_bar = 104 * ui_volume / 30;
+  int volume_bar = 104 * settings::ui_volume / 30;
 
   u8g2.drawFrame(11, 24, 106, 16);
   u8g2.drawBox(12, 25, volume_bar, 14);
@@ -387,12 +323,32 @@ void volume_menu() {
   u8g2.sendBuffer();
 }
 
+void CalibrationMenu() {
+  int gif_index = 0;
+  int jump_index = 0;
+  while(true) {
+    u8g2.clearBuffer();
+
+    u8g2.drawXBM((-40 + (gif_index * 3) + (jump_index * 22)), 15, 40, 20, mouse_gif[gif_index]);
+    if (gif_index >=6) {gif_index = 0; jump_index++;} else {gif_index++;}  
+
+    if (jump_index >= 8) {break;}
+
+    u8g2.sendBuffer();
+    delay(100);
+  }
+}
+
 void select_option() {
   switch (current_menu) {
     case MENU_MAIN:
-      if (mode_engaged == 0 && current_mode == 2) {
+      if (mode_engaged == 0 && current_option == 2) {
         // Sound menu has been selected
         current_menu = MENU_SOUND;
+        update_menu();
+      } else if (mode_engaged == 0 && current_option == 3) {
+        // Calibration Menu
+        current_menu = MENU_CALIBRATION;
         update_menu();
       } else if (mode_engaged == 0) {
         // Mode is not engaged and option is NOT for sound menu
@@ -405,16 +361,17 @@ void select_option() {
       break;
 
     case MENU_SOUND:
-      if (current_mode == 0) {
+      if (current_option == 0) {
         // Volume menu
         current_menu = MENU_VOLUME;
         volume_menu();
-      } else if (current_mode == 1) {
+      } else if (current_option == 1) {
         // Startup menu
         current_menu = MENU_STARTUP;
         update_menu();
       } else {
         // Return
+        current_option = MENU_SOUND;
         current_menu = MENU_MAIN;
         update_menu();
       }
@@ -422,20 +379,35 @@ void select_option() {
 
     case MENU_VOLUME:
       current_menu = MENU_SOUND;
-      set_default_volume(ui_volume);
+      mcu_comms.SetDefaultVolume(settings::ui_volume);
       update_menu();
       break;
 
     case MENU_STARTUP:
-      if (current_mode == 0) {
+      if (current_option == 0) {
         // Windows 95
         df_player.playMp3Folder(DF_songs::WIN_95);
-      } else if (current_mode == 1) {
+      } else if (current_option == 1) {
         // Windows XP
         df_player.playMp3Folder(DF_songs::WIN_XP);
       } else {
         // Return to previous menu
+        current_option = MENU_STARTUP;
         current_menu = MENU_SOUND;
+        update_menu();
+      }
+
+    case MENU_CALIBRATION:
+      if (current_option == 0) {
+        // Calibrate LDRs on Black Surface
+        CalibrationMenu();
+      } else if (current_option == 1) {
+        // Calibrate LDRs on White Line
+
+      } else {
+        // Return to previous menu
+        current_option = MENU_CALIBRATION;
+        current_menu = MENU_MAIN;
         update_menu();
       }
 
@@ -445,8 +417,38 @@ void select_option() {
 }
 
 void set_volume(int volume) {
-  ui_volume = constrain(volume, 0, 30);
-  df_player.volume(ui_volume);
+  settings::ui_volume = constrain(volume, 0, 30);
+  df_player.volume(settings::ui_volume);
+}
+
+void LoadingScreen() {
+  int gif_index = 0;
+  int jump_index = 0;
+
+  while(true) {
+    u8g2.clearBuffer();
+    u8g2.setFontMode(1);
+    u8g2.setBitmapMode(1);
+    u8g2.setFont(u8g2_font_profont29_tr);
+    u8g2.drawStr(31, 23, "TEAM");
+    u8g2.drawStr(24, 60, "BRAVO");
+
+    u8g2.drawXBM((-40 + (gif_index * 3) + (jump_index * 22)), 25, 40, 20, mouse_gif[gif_index]);
+    if (gif_index >=6) {gif_index = 0; jump_index++;} else {gif_index++;}  
+
+    if (jump_index >= 8) {break;}
+
+    u8g2.sendBuffer();
+    delay(100);
+  }
+}
+
+void ErrorScreen() {
+  u8g2.clearBuffer();
+  u8g2.setFontMode(1);
+  u8g2.setBitmapMode(1);
+  u8g2.drawStr(0,0,"Error");
+  u8g2.sendBuffer();
 }
 
 void setup() {
@@ -457,9 +459,9 @@ void setup() {
 
   // DFPlayer Mini Communication using buult-in Serial1 on hardware UART 0
   // Mapped to GP0 and GP1 by default.
-  FPSerial.setTX(0);
-  FPSerial.setRX(1);
-  FPSerial.begin(9600);
+  DFPSerial.setTX(settings::df_tx);
+  DFPSerial.setRX(settings::df_rx);
+  DFPSerial.begin(settings::df_baud);
 
   CommSerial.setTX(8);
   CommSerial.setRX(9);
@@ -468,18 +470,19 @@ void setup() {
   Serial.begin(115200);
 
   Serial.println();
-  Serial.println(F("DFRobot DFPlayer Mini Demo"));
-  Serial.println(F("Initializing DFPlayer ... (May take 3~5 seconds)"));
+  Serial.println("DFRobot DFPlayer Mini Demo");
+  Serial.println("Initializing DFPlayer ... (May take 3~5 seconds)");
   
-  if (!df_player.begin(FPSerial, /*isACK = */false, /*doReset = */true)) {  //Use serial to communicate with mp3.
-    Serial.println(F("Unable to begin:"));
-    Serial.println(F("1.Please recheck the connection!"));
-    Serial.println(F("2.Please insert the SD card!"));
-    //while(true){
-    //  delay(0); // Code to compatible with ESP8266 watch dog.
-    //}
+  if (!df_player.begin(DFPSerial, /*isACK = */false, /*doReset = */true)) {  //Use serial to communicate with mp3.
+    Serial.println("Unable to begin:");
+    Serial.println("1.Please recheck the connection!");
+    Serial.println("2.Please insert the SD card!");
+    ErrorScreen();
+    while(true){
+      delay(0);
+    }
   }
-  Serial.println(F("DFPlayer Mini online."));
+  Serial.println("DFPlayer Mini online.");
 
   pinMode(enc_pin_A, INPUT_PULLUP);
   pinMode(enc_pin_B, INPUT_PULLUP);
@@ -492,30 +495,15 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(enc_pin_B), isr_encoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(enc_switch), encoder_switch, FALLING);
 
-  // Loading Splash Screen with Sound
+  settings::startup_sound = DF_songs::WIN_95;
+  settings::combat_music = DF_songs::DOOM;
 
-  u8g2.setFontMode(1);
-  u8g2.setBitmapMode(1);
-  u8g2.setFont(u8g2_font_profont29_tr);
-  u8g2.drawStr(31, 23, "TEAM");
-  u8g2.drawStr(24, 60, "BRAVO");
-  u8g2.drawFrame(2, 24, 124, 15);
-  u8g2.sendBuffer();
-  
   // Fetch the settings from EEPROM, set the ACK flag and wait for it to be cleared by the serial handler, on error, resort to defaults
-  //  
-  //
 
   //df_player.volume(ui_volume);
-  df_player.playMp3Folder(startup_sound);
-  int counter = 1;
-  while (counter < 100) {
-    u8g2.drawBox(3,25,(122*counter/100),13);
-    u8g2.sendBuffer();
-    counter++;
-    delay(4000/100);
-  }
+  df_player.playMp3Folder(settings::startup_sound);
 
+  LoadingScreen();
   update_menu();
 }
 
@@ -531,8 +519,8 @@ void loop() {
   switch (current_menu) {
 
     case (MENU_VOLUME):
-      while (steps > 0) {set_volume(ui_volume + 1); steps--;}
-      while (steps < 0) {set_volume(ui_volume - 1); steps++;}
+      while (steps > 0) {set_volume(settings::ui_volume + 1); steps--;}
+      while (steps < 0) {set_volume(settings::ui_volume - 1); steps++;}
       steps =  0;
       volume_menu();
       break;
@@ -550,4 +538,15 @@ void loop() {
     select_option();
     menu_btn_flag = 0;
   }
+
+  char line[96];
+  while(mcu_comms.PollLine(line, sizeof(line))) {
+    mcu_comms.HandleMainLine(line);
+  }
+
+  if (flags::volume_change) {
+    df_player.volume(settings::ui_volume);
+    flags::volume_change = false;
+  }
+
 }
