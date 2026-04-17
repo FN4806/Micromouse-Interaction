@@ -1,6 +1,6 @@
 #include "Arduino.h"
 #include "pi2pi_serial.h"
-#include "settings.h"
+#include "config/settings.h"
 
 #define CommSerial Serial2
 

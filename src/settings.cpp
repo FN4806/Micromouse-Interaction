@@ -1,4 +1,5 @@
-#include "settings.h"
+#include "Arduino.h"
+#include "config/settings.h"
 
 namespace settings {
     uint8_t ui_volume = 0;
