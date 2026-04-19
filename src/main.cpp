@@ -4,14 +4,14 @@
 
 #include "config/settings.h"
 #include "config/bitmaps.h"
-#include "pi2pi_serial.h"
+#include "ui_serial.h"
 
 #define DFPSerial Serial1
-#define CommSerial Serial2
+//#define CommSerial Serial2
 
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 DFRobotDFPlayerMini df_player;
-Pi2PiSerial mcu_comms;
+//Pi2PiSerial mcu_comms;
 
 // ------ MAIN MENU ITEMS ARRAYS ------
 const int MAIN_NUM_ITEMS = 5;
@@ -86,15 +86,9 @@ enum DF_songs {
   NUM_SONGS
 };
 
-enum MicromouseMode {
-  MODE_UI = 0,
-  MODE_LINE_FOLLOWING,
-  MODE_COMBAT,
-  MODE_OBSTACLE_AVOIDANCE
-};
-
 enum ErrorStates {
-  DFPLAYER_INIT_FAIL = 0
+  DFPLAYER_INIT_FAIL = 0,
+  SERIAL_MSG_FAIL
 };
 
 enum MenuState {
@@ -141,6 +135,7 @@ volatile int enc_accumulator = 0;
 
 volatile int menu_btn_flag = 0;
 
+bool ok = false;
 // SERIAL HERE
 
 void EncoderSwitch() {
@@ -205,6 +200,44 @@ void UpdateMenu() {
   df_player.playMp3Folder(DF_songs::MENU_CLICK);
 }
 
+void ErrorScreen(ErrorStates error_type) {
+  u8g2.clearBuffer();
+  u8g2.setFontMode(1);
+  u8g2.setBitmapMode(1);
+
+  switch (error_type) {
+    case ErrorStates::DFPLAYER_INIT_FAIL:
+      u8g2.setFont(u8g2_font_profont15_tr);
+      u8g2.drawStr(22, 14, "ERROR CODE 1");
+
+      u8g2.setFont(u8g2_font_profont11_tr);
+      u8g2.drawStr(1,29,"Unable to connect to:");
+      u8g2.drawStr(22,37, "DF Player Mini");
+      u8g2.drawStr(2, 50, "1. Check Connection");
+      u8g2.drawStr(2, 61, "2. Insert SD Card");
+
+      u8g2.drawXBM(110,2,16,16,image_Warning_bits);
+      u8g2.drawXBM(2,2, 16, 16, image_Warning_bits);
+
+      break;
+    case ErrorStates::SERIAL_MSG_FAIL:
+      u8g2.setFont(u8g2_font_profont15_tr);
+      u8g2.drawStr(22, 14, "ERROR CODE 2");
+
+      u8g2.setFont(u8g2_font_profont11_tr);
+      u8g2.drawStr(1,29,"No Response from Main Pico");
+      u8g2.drawStr(1,37,"1. Check Connections");
+      u8g2.drawStr(1,45,"2. Check Main Pico is On");
+
+      u8g2.drawXBM(110,2,16,16,image_Warning_bits);
+      u8g2.drawXBM(2,2, 16, 16, image_Warning_bits);
+
+      break;
+  }
+
+  u8g2.sendBuffer();
+}
+
 void DisplayFace() {
   df_player.playMp3Folder(DF_songs::MENU_CLICK);
 
@@ -215,14 +248,30 @@ void DisplayFace() {
 
   switch (current_option) {
     case 0: // Line Following Mode
-      mcu_comms.SelectMode(MODE_LINE_FOLLOWING);
+      
+      ok = sendSetModeCommand(MODE_LINE_FOLLOWING);
+      if (!ok) {
+        ErrorScreen(ErrorStates::SERIAL_MSG_FAIL);
+        mode_engaged = 1;
+      }
+
       break;
     case 1: // Combat Mode
       u8g2.drawXBM(14, 8, 101, 48, image_Angry_Face_bits);
-      mcu_comms.SelectMode(MODE_COMBAT);
+      
+      ok = sendSetModeCommand(MODE_COMBAT);
+      if (!ok) {
+        ErrorScreen(ErrorStates::SERIAL_MSG_FAIL);
+        mode_engaged = 1;
+      }
       break;
     case (MAIN_NUM_ITEMS - 1): // Obstacle Avoidance Mode
-      mcu_comms.SelectMode(MODE_OBSTACLE_AVOIDANCE);
+      
+      ok = sendSetModeCommand(MODE_OBSTACLE_AVOIDANCE);
+      if (!ok) {
+        ErrorScreen(ErrorStates::SERIAL_MSG_FAIL);
+        mode_engaged = 1;
+      }
       break;
     default:
       u8g2.drawStr(10,10,{"No Face Yet!"});
@@ -325,32 +374,6 @@ void LoadingScreen() {
   }
 }
 
-void ErrorScreen(ErrorStates error_type) {
-  u8g2.clearBuffer();
-  u8g2.setFontMode(1);
-  u8g2.setBitmapMode(1);
-
-  switch (error_type) {
-    case ErrorStates::DFPLAYER_INIT_FAIL:
-      u8g2.setFont(u8g2_font_profont15_tr);
-      u8g2.drawStr(22, 14, "ERROR CODE 1");
-
-      u8g2.setFont(u8g2_font_profont11_tr);
-      u8g2.drawStr(1,29,"Unable to connect to:");
-      u8g2.drawStr(22,37, "DF Player Mini");
-      u8g2.drawStr(2, 50, "1. Check Connection");
-      u8g2.drawStr(2, 61, "2. Insert SD Card");
-
-      u8g2.drawXBM(110,2,16,16,image_Warning_bits);
-      u8g2.drawXBM(2,2, 16, 16, image_Warning_bits);
-
-      break;
-  }
-
-  u8g2.sendBuffer();
-}
-
-
 
 void NextOption() {
   const uint8_t num_options = menus[current_menu].count;
@@ -363,7 +386,6 @@ void PrevOption() {
   current_option = (current_option == 0) ? (num_options - 1) : (current_option - 1);
   UpdateMenu();
 }
-
 
 
 void SelectOption() {
@@ -383,6 +405,14 @@ void SelectOption() {
         mode_engaged = 1;
       } else {
         UpdateMenu();
+        
+        ok = sendSetModeCommand(MODE_UI);
+        if (!ok) {
+          ErrorScreen(ErrorStates::SERIAL_MSG_FAIL);
+          mode_engaged = 1;
+          break;
+        }
+
         mode_engaged = 0;
       }
       break;
@@ -406,7 +436,7 @@ void SelectOption() {
 
     case MENU_VOLUME:
       current_menu = MENU_SOUND;
-      mcu_comms.SetDefaultVolume(settings::ui_volume);
+      //mcu_comms.SetDefaultVolume(settings::ui_volume);
       UpdateMenu();
       break;
 
@@ -427,19 +457,26 @@ void SelectOption() {
 
     case MENU_CALIBRATION:
     
-      if (current_option == 0) {
+      if (mode_engaged == 0 & current_option == 0) {
         // Calibrate LDRs on Black Surface
         CalibrationMenu();
-      } else if (current_option == 1) {
+        mode_engaged = 1;
+      } else if (mode_engaged == 0 & current_option == 1) {
         // Calibrate LDRs on White Line
 
-      } else if (current_option == 2) {
+        mode_engaged = 1;
+      } else if (mode_engaged == 0 & current_option == 2) {
         // Read Thresholds
         DisplayThresholds();
-      } else {
+        mode_engaged = 1;
+      } else if (mode_engaged == 0 & current_option == 3) {
         // Return to previous menu
         current_option = MENU_CALIBRATION;
         current_menu = MENU_MAIN;
+        mode_engaged = 0;
+        UpdateMenu();
+      } else {
+        mode_engaged = 0;
         UpdateMenu();
       }
       break;
@@ -460,9 +497,11 @@ void setup() {
 
   // MCU to MCU Communications using built-in Serial2 on hardware UART 1
   // Mapped to GP8 and GP9
-  CommSerial.setTX(8);
-  CommSerial.setRX(9);
-  CommSerial.begin(115200);
+  // CommSerial.setTX(8);
+  // CommSerial.setRX(9);
+  // CommSerial.begin(115200);
+
+  setupUiLink();
 
   // DFPlayer Mini Communication using buult-in Serial1 on hardware UART 0
   // Mapped to GP0 and GP1 by default.
@@ -539,10 +578,10 @@ void loop() {
     menu_btn_flag = 0;
   }
 
-  char line[96];
-  while(mcu_comms.PollLine(line, sizeof(line))) {
-    mcu_comms.HandleMainLine(line);
-  }
+  // char line[96];
+  // while(mcu_comms.PollLine(line, sizeof(line))) {
+  //   mcu_comms.HandleMainLine(line);
+  // }
 
   if (flags::volume_change) {
     df_player.volume(settings::ui_volume);
