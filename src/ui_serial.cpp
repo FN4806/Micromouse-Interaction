@@ -11,6 +11,16 @@ static volatile uint8_t gReplySeq = 0;
 static volatile uint8_t gReplyError = ERR_NONE;
 static volatile uint8_t gReplyStatusMode = MODE_UI;
 
+static volatile bool gReplyWasSettingValue = false;
+static volatile bool gReplyWasAllSettings = false;
+
+static volatile uint8_t gReplySettingId = 0;
+static volatile uint8_t gReplySettingValue = 0;
+
+static volatile uint8_t gReplyAllStartupMusic = 0;
+static volatile uint8_t gReplyAllCombatMusic = 0;
+static volatile uint8_t gReplyAllVolume = 0;
+
 // Incrementing sequence number to match replies to requests.
 static uint8_t gNextSeq = 1;
 
@@ -29,6 +39,8 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
             gReplyReceived = true;
             gReplyWasAck = true;
             gReplyWasStatus = false;
+            gReplyWasSettingValue = false;
+            gReplyWasAllSettings = false;
             gReplySeq = seq;
             gReplyError = ERR_NONE;
             break;
@@ -37,6 +49,8 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
             gReplyReceived = true;
             gReplyWasAck = false;
             gReplyWasStatus = false;
+            gReplyWasSettingValue = false;
+            gReplyWasAllSettings = false;
             gReplySeq = seq;
             gReplyError = (size >= 3) ? buffer[2] : ERR_INVALID_PAYLOAD;
             break;
@@ -46,16 +60,65 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
                 gReplyReceived = true;
                 gReplyWasAck = false;
                 gReplyWasStatus = true;
+                gReplyWasSettingValue = false;
+                gReplyWasAllSettings = false;
                 gReplySeq = seq;
                 gReplyStatusMode = buffer[2];
                 gReplyError = ERR_NONE;
             }
             break;
 
+        case MSG_SETTING_VALUE:
+            if (size >= 4) {
+                gReplyReceived = true;
+                gReplyWasAck = false;
+                gReplyWasStatus = false;
+                gReplyWasSettingValue = true;
+                gReplyWasAllSettings = false;
+                gReplySeq = seq;
+                gReplySettingId = buffer[2];
+                gReplySettingValue = buffer[3];
+                gReplyError = ERR_NONE;
+            }
+            break;
+
+        case MSG_ALL_SETTINGS:
+            if (size >= 5) {
+                gReplyReceived = true;
+                gReplyWasAck = false;
+                gReplyWasStatus = false;
+                gReplyWasSettingValue = false;
+                gReplyWasAllSettings = true;
+                gReplySeq = seq;
+                gReplyAllStartupMusic = buffer[2];
+                gReplyAllCombatMusic = buffer[3];
+                gReplyAllVolume = buffer[4];
+                gReplyError = ERR_NONE;
+            }
+            break;
+
         default:
-            // Ignore unknown packets.
             break;
     }
+}
+
+static void clearReplyState()
+{
+    gReplyReceived = false;
+    gReplyWasAck = false;
+    gReplyWasStatus = false;
+    gReplyWasSettingValue = false;
+    gReplyWasAllSettings = false;
+
+    gReplySeq = 0;
+    gReplyError = ERR_NONE;
+
+    gReplySettingId = 0;
+    gReplySettingValue = 0;
+
+    gReplyAllStartupMusic = 0;
+    gReplyAllCombatMusic = 0;
+    gReplyAllVolume = 0;
 }
 
 void setupUiLink()
@@ -186,4 +249,121 @@ bool requestStatus(MicromouseMode& modeOut)
     packet[1] = seq;
 
     return sendCommandWithRetry(packet, sizeof(packet), seq, true, &modeOut);
+}
+
+bool saveSetting(uint8_t settingId, uint8_t value)
+{
+    const uint8_t seq = gNextSeq++;
+
+    uint8_t packet[4];
+    packet[0] = MSG_CMD_WRITE_SETTING;
+    packet[1] = seq;
+    packet[2] = settingId;
+    packet[3] = value;
+
+    return sendCommandWithRetry(packet, sizeof(packet), seq, false);
+}
+
+bool loadSetting(uint8_t settingId, uint8_t& valueOut)
+{
+    const uint8_t seq = gNextSeq++;
+
+    uint8_t packet[3];
+    packet[0] = MSG_CMD_READ_SETTING;
+    packet[1] = seq;
+    packet[2] = settingId;
+
+    for (uint8_t attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+        clearReplyState();
+
+        packetSerial.send(packet, sizeof(packet));
+
+        const unsigned long start = millis();
+        while (millis() - start < REPLY_TIMEOUT_MS) {
+            updateUiLink();
+
+            if (!gReplyReceived) {
+                continue;
+            }
+
+            if (gReplySeq != seq) {
+                clearReplyState();
+                continue;
+            }
+
+            if (gReplyWasSettingValue) {
+                if (gReplySettingId == settingId) {
+                    valueOut = gReplySettingValue;
+                    clearReplyState();
+                    return true;
+                } else {
+                    clearReplyState();
+                    return false;
+                }
+            }
+
+            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasAllSettings && !gReplyWasSettingValue) {
+                clearReplyState();
+                return false;
+            }
+        }
+
+        delay(20);
+    }
+
+    return false;
+}
+
+bool loadAllSettings()
+{
+    const uint8_t seq = gNextSeq++;
+
+    uint8_t packet[2];
+    packet[0] = MSG_CMD_READ_ALL_SETTINGS;
+    packet[1] = seq;
+
+    for (uint8_t attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+        clearReplyState();
+
+        packetSerial.send(packet, sizeof(packet));
+
+        const unsigned long start = millis();
+        while (millis() - start < REPLY_TIMEOUT_MS) {
+            updateUiLink();
+
+            if (!gReplyReceived) {
+                continue;
+            }
+
+            if (gReplySeq != seq) {
+                clearReplyState();
+                continue;
+            }
+
+            if (gReplyWasAllSettings) {
+                ui_settings.startup_music   = gReplyAllStartupMusic;
+                ui_settings.combat_music    = gReplyAllCombatMusic;
+                ui_settings.volume          = gReplyAllVolume;
+
+                clearReplyState();
+                return true;
+            }
+
+            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasSettingValue && !gReplyWasAllSettings) {
+                clearReplyState();
+                return false;
+            }
+        }
+
+        delay(20);
+    }
+
+    return false;
+}
+
+UiSettings ui_settings;
+void loadDefaultSettings() {
+    ui_settings.startup_music   = 5;
+    ui_settings.combat_music    = 3;
+    ui_settings.volume          = 20;
 }

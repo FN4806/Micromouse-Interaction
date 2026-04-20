@@ -3,13 +3,19 @@
 
 // ---------- Message types ----------
 enum MessageType : uint8_t {
-    MSG_CMD_SET_MODE      = 0x01,
-    MSG_CMD_STOP          = 0x02,
-    MSG_CMD_REQUEST_STATUS= 0x03,
+    MSG_CMD_SET_MODE            = 0x01,
+    MSG_CMD_STOP                = 0x02,
+    MSG_CMD_REQUEST_STATUS      = 0x03,
 
-    MSG_ACK               = 0x80,
-    MSG_NAK               = 0x81,
-    MSG_STATUS            = 0x82
+    MSG_CMD_WRITE_SETTING       = 0x10,
+    MSG_CMD_READ_SETTING        = 0x11,
+    MSG_CMD_READ_ALL_SETTINGS   = 0x12,
+
+    MSG_ACK                     = 0x80,
+    MSG_NAK                     = 0x81,
+    MSG_STATUS                  = 0x82,
+    MSG_SETTING_VALUE           = 0x83,
+    MSG_ALL_SETTINGS            = 0x84
 };
 
 // ---------- Robot modes ----------
@@ -25,7 +31,15 @@ enum ErrorCode : uint8_t {
     ERR_NONE = 0,
     ERR_INVALID_CMD = 1,
     ERR_INVALID_PAYLOAD = 2,
-    ERR_BUSY = 3
+    ERR_BUSY = 3,
+    ERR_INVALID_SETTING = 4,
+    ERR_STORAGE_FAIL = 5
+};
+
+enum SettingId : uint8_t {
+    SETTING_STARTUP_MUSIC = 0x01,
+    SETTING_COMBAT_MUSIC = 0x02,
+    SETTING_VOLUME = 0x03
 };
 
 // ---------- Packet layout ----------

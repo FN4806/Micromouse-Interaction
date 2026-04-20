@@ -1,0 +1,68 @@
+#ifndef MENU_DATA_H
+#define MENU_DATA_H
+
+#include <Arduino.h>
+
+enum MainMenuItems {
+  MAIN_MENU_LINE = 0,
+  MAIN_MENU_COMBAT,
+  MAIN_MENU_MUSIC,
+  MAIN_MENU_CALIBRATION,
+  MAIN_MENU_OBSTACLE_AVOIDANCE
+};
+
+enum MenuState {
+  MENU_MAIN = 0,
+  MENU_SOUND,
+  MENU_VOLUME,
+  MENU_CALIBRATION,
+  MENU_STARTUP,
+  MENU_COUNT
+};
+
+enum MenuAction : uint8_t {
+  ACTION_NONE = 0,
+
+  ACTION_ENTER_SOUND_MENU,
+  ACTION_ENTER_CALIBRATION_MENU,
+  ACTION_ENTER_STARTUP_MENU,
+  ACTION_RETURN,
+
+  ACTION_MODE_LINE,
+  ACTION_MODE_COMBAT,
+  ACTION_MODE_OBSTACLE,
+
+  ACTION_VOLUME_SCREEN,
+  ACTION_STARTUP_SOUND_WIN95,
+  ACTION_STARTUP_SOUND_WINXP,
+
+  ACTION_CALIBRATE_BLACK,
+  ACTION_CALIBRATE_WHITE,
+  ACTION_READ_THRESHOLDS
+};
+
+enum UiInteractionState {
+    UI_NAVIGATING = 0,
+    UI_MODE_RUNNING,
+    UI_VOLUME_EDIT,
+    UI_SHOWING_THRESHOLDS,
+    UI_SHOWING_CALIBRATION,
+    UI_SHOWING_ERROR
+};
+
+extern UiInteractionState ui_state;
+
+struct MenuItem {
+    const char* label;
+    const unsigned char* icon;
+    MenuAction action;
+};
+
+struct MenuDef {
+  const MenuItem* items;
+  uint8_t count;
+};
+
+extern const MenuDef menus[MENU_COUNT];
+
+#endif

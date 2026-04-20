@@ -4,12 +4,6 @@
 #include "Arduino.h"
 
 namespace settings {
-    // ---------- Program Settings ---------- //
-    extern uint8_t ui_volume;
-    extern uint8_t startup_sound;
-    extern uint8_t combat_music;
-
-
     // ---------- DFPlayer Mini Settings ---------- //
     /// @brief DF Player Mini Serial Connection, named as transmit as Pico -> DF Player
     const uint8_t df_tx{0}; 
@@ -27,6 +21,7 @@ namespace settings {
 
 namespace flags {
     extern bool volume_change;
+    extern bool menu_btn_flag;
 }
 
 #endif
