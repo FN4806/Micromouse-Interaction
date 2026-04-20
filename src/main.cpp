@@ -268,6 +268,3 @@ void loop() {
   }
 
 }
-
-// Changes:
-// Fixed exiting calibration menu with 
