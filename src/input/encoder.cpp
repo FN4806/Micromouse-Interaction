@@ -6,8 +6,8 @@ namespace encoder {
 
     // Blank namespace keeps helper functions and local variables private to this file
     namespace {
-        const int kEncoderPinA = 11;
-        const int kEncoderPinB = 12;
+        const int kEncoderPinA = 12;
+        const int kEncoderPinB = 11; 
         const int kEncoderSwitch = 10;
 
         volatile int enc_delta = 0;
@@ -21,7 +21,7 @@ namespace encoder {
         0, +1, -1,  0
         };
         void encoderSwitch() {
-            static int last_pressed = 0;
+            static unsigned long last_pressed = 0;
             if (millis() - last_pressed > 200) {
                 flags::menu_btn_flag = true;
             }
@@ -32,6 +32,13 @@ namespace encoder {
             uint8_t current = (digitalRead(kEncoderPinA) << 1) | digitalRead(kEncoderPinB);
             uint8_t index = (previous << 2) | current;
             int8_t step = decoder[index];
+
+            Serial.print("Current state: ");
+            Serial.print(current, BIN);
+            Serial.print("  |  Previous state: ");
+            Serial.print(previous, BIN);
+            Serial.print("  |  Transition value: ");
+            Serial.println(step, DEC);
 
             if (step) {
                 enc_accumulator += step;
@@ -59,6 +66,9 @@ namespace encoder {
 
     int getEncoderDelta() {
         noInterrupts();
+        if (enc_delta > 0) {
+            Serial.println(enc_delta);
+        }
         int steps = enc_delta;
         enc_delta = 0; 
         interrupts();

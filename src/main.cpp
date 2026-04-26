@@ -203,6 +203,7 @@ void setup() {
 
   if (!audio::setup()) {
     display::showError(DFPLAYER_INIT_FAIL);
+    Serial.println("DF Player Mini failed to connect");
     while (true) {delay(0);}
   }
 
@@ -244,8 +245,8 @@ void loop() {
     default:
       if (ui_state != UI_NAVIGATING) break;
 
-      while (steps > 0) {NextOption(); steps--;}
-      while (steps < 0) {PrevOption(); steps++;}
+      while (steps > 0) {NextOption(); steps--; Serial.println("Next Option");}
+      while (steps < 0) {PrevOption(); steps++; Serial.println("Prev Option");}
       steps = 0;
       break;
   }
