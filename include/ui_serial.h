@@ -10,7 +10,15 @@ struct UiSettings {
     uint8_t combat_music;
 };
 
+struct Thresholds {
+    uint16_t fl;
+    uint16_t fr;
+    uint16_t rl;
+    uint16_t rr;
+};
+
 extern UiSettings ui_settings;
+extern Thresholds thresholds;
 
 void setupUiLink();
 void updateUiLink();
@@ -23,5 +31,8 @@ bool saveSetting(uint8_t settingId, uint8_t value);
 bool loadSetting(uint8_t settingId, uint8_t& valueOut);
 bool loadAllSettings();
 void loadDefaultSettings();
+bool loadThresholds();
+bool calibrateBlack();
+bool calibrateWhite();
 
 #endif

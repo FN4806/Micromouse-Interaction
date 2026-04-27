@@ -13,6 +13,7 @@ static volatile uint8_t gReplyStatusMode = MODE_UI;
 
 static volatile bool gReplyWasSettingValue = false;
 static volatile bool gReplyWasAllSettings = false;
+static volatile bool gReplyWasThresholds = false;
 
 static volatile uint8_t gReplySettingId = 0;
 static volatile uint8_t gReplySettingValue = 0;
@@ -23,6 +24,9 @@ static volatile uint8_t gReplyAllVolume = 0;
 
 // Incrementing sequence number to match replies to requests.
 static uint8_t gNextSeq = 1;
+
+UiSettings ui_settings;
+Thresholds thresholds;
 
 // ---------- Packet handler ----------
 static void onPacketReceived(const uint8_t* buffer, size_t size)
@@ -41,6 +45,7 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
             gReplyWasStatus = false;
             gReplyWasSettingValue = false;
             gReplyWasAllSettings = false;
+            gReplyWasThresholds = false;
             gReplySeq = seq;
             gReplyError = ERR_NONE;
             break;
@@ -51,6 +56,7 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
             gReplyWasStatus = false;
             gReplyWasSettingValue = false;
             gReplyWasAllSettings = false;
+            gReplyWasThresholds = false;
             gReplySeq = seq;
             gReplyError = (size >= 3) ? buffer[2] : ERR_INVALID_PAYLOAD;
             break;
@@ -62,6 +68,7 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
                 gReplyWasStatus = true;
                 gReplyWasSettingValue = false;
                 gReplyWasAllSettings = false;
+                gReplyWasThresholds = false;
                 gReplySeq = seq;
                 gReplyStatusMode = buffer[2];
                 gReplyError = ERR_NONE;
@@ -75,6 +82,7 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
                 gReplyWasStatus = false;
                 gReplyWasSettingValue = true;
                 gReplyWasAllSettings = false;
+                gReplyWasThresholds = false;
                 gReplySeq = seq;
                 gReplySettingId = buffer[2];
                 gReplySettingValue = buffer[3];
@@ -89,11 +97,32 @@ static void onPacketReceived(const uint8_t* buffer, size_t size)
                 gReplyWasStatus = false;
                 gReplyWasSettingValue = false;
                 gReplyWasAllSettings = true;
+                gReplyWasThresholds = false;
                 gReplySeq = seq;
                 gReplyAllStartupMusic = buffer[2];
                 gReplyAllCombatMusic = buffer[3];
                 gReplyAllVolume = buffer[4];
                 gReplyError = ERR_NONE;
+            }
+            break;
+
+        case MSG_THRESHOLDS:
+            if (size == 10) {
+                gReplyReceived = true;
+
+                gReplyWasAck = false;
+                gReplyWasStatus = false;
+                gReplyWasSettingValue = false;
+                gReplyWasAllSettings = false;
+                gReplyWasThresholds = true;
+
+                gReplySeq = seq;
+                
+                // Static cast to uint16_t since buffer is originally uint8_t but we need room to shift 
+                thresholds.fl = (static_cast<uint16_t>(buffer[2]) << 8) | buffer[3];
+                thresholds.fr = (static_cast<uint16_t>(buffer[4]) << 8) | buffer[5];
+                thresholds.rl = (static_cast<uint16_t>(buffer[6]) << 8) | buffer[7];
+                thresholds.rr = (static_cast<uint16_t>(buffer[8]) << 8) | buffer[9];
             }
             break;
 
@@ -109,6 +138,7 @@ static void clearReplyState()
     gReplyWasStatus = false;
     gReplyWasSettingValue = false;
     gReplyWasAllSettings = false;
+    gReplyWasThresholds = false;
 
     gReplySeq = 0;
     gReplyError = ERR_NONE;
@@ -302,7 +332,7 @@ bool loadSetting(uint8_t settingId, uint8_t& valueOut)
                 }
             }
 
-            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasAllSettings && !gReplyWasSettingValue) {
+            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasAllSettings && !gReplyWasSettingValue && !gReplyWasThresholds) {
                 clearReplyState();
                 return false;
             }
@@ -349,7 +379,7 @@ bool loadAllSettings()
                 return true;
             }
 
-            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasSettingValue && !gReplyWasAllSettings) {
+            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasSettingValue && !gReplyWasAllSettings && !gReplyWasThresholds) {
                 clearReplyState();
                 return false;
             }
@@ -361,9 +391,134 @@ bool loadAllSettings()
     return false;
 }
 
-UiSettings ui_settings;
 void loadDefaultSettings() {
     ui_settings.startup_music   = 5;
     ui_settings.combat_music    = 3;
     ui_settings.volume          = 20;
+}
+
+bool loadThresholds() {
+    const uint8_t seq = gNextSeq++;
+
+    uint8_t packet[2];
+    packet[0] = MSG_CMD_REQUEST_THRESHOLDS;
+    packet[1] = seq;
+
+    for (uint8_t attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+        clearReplyState();
+
+        packetSerial.send(packet, sizeof(packet));
+
+        const unsigned long start = millis();
+        while (millis() - start < REPLY_TIMEOUT_MS) {
+            updateUiLink();
+
+            if (!gReplyReceived) {
+                continue;
+            }
+
+            if (gReplySeq != seq) {
+                clearReplyState();
+                continue;
+            }
+
+            if (gReplyWasThresholds) {
+                clearReplyState();
+                return true;
+            }
+
+            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasAllSettings && !gReplyWasSettingValue && !gReplyWasThresholds) {
+                clearReplyState();
+                return false;
+            }
+        }
+
+        delay(20);
+    }
+
+    return false;
+}
+
+bool calibrateWhite() {
+    const uint8_t seq = gNextSeq++;
+
+    uint8_t packet[2];
+    packet[0] = MSG_CMD_CALIBRATE_WHITE;
+    packet[1] = seq;
+
+    for (uint8_t attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+        clearReplyState();
+
+        packetSerial.send(packet, sizeof(packet));
+
+        const unsigned long start = millis();
+        while (millis() - start < REPLY_TIMEOUT_MS) {
+            updateUiLink();
+
+            if (!gReplyReceived) {
+                continue;
+            }
+
+            if (gReplySeq != seq) {
+                clearReplyState();
+                continue;
+            }
+
+            if (gReplyWasThresholds) {
+                clearReplyState();
+                return true;
+            }
+
+            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasAllSettings && !gReplyWasSettingValue && !gReplyWasThresholds) {
+                clearReplyState();
+                return false;
+            }
+        }
+
+        delay(20);
+    }
+
+    return false;
+}
+
+bool calibrateBlack() {
+    const uint8_t seq = gNextSeq++;
+
+    uint8_t packet[2];
+    packet[0] = MSG_CMD_CALIBRATE_BLACK;
+    packet[1] = seq;
+
+    for (uint8_t attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+        clearReplyState();
+
+        packetSerial.send(packet, sizeof(packet));
+
+        const unsigned long start = millis();
+        while (millis() - start < REPLY_TIMEOUT_MS) {
+            updateUiLink();
+
+            if (!gReplyReceived) {
+                continue;
+            }
+
+            if (gReplySeq != seq) {
+                clearReplyState();
+                continue;
+            }
+
+            if (gReplyWasThresholds) {
+                clearReplyState();
+                return true;
+            }
+
+            if (!gReplyWasAck && !gReplyWasStatus && !gReplyWasAllSettings && !gReplyWasSettingValue && !gReplyWasThresholds) {
+                clearReplyState();
+                return false;
+            }
+        }
+
+        delay(20);
+    }
+
+    return false;
 }

@@ -110,7 +110,9 @@ namespace display {
         u8g2.sendBuffer();
     }
 
-    void showThresholds() {
+    void showThresholds(ThresholdType thresh) {
+        char buf[10]; // Buffer for formatted strings 
+
         u8g2.clearBuffer();
         u8g2.setFontMode(1);
         u8g2.setBitmapMode(1);
@@ -126,12 +128,36 @@ namespace display {
         u8g2.drawStr(94, 52, "RR");
         u8g2.drawStr(94, 9, "FR");
         
-        u8g2.drawStr(4, 35, "- CALIBRATION COMPLETE -");
-        
-        u8g2.drawStr(25, 60, "2.6V");
-        u8g2.drawStr(84, 60, "2.6V");
-        u8g2.drawStr(25, 17, "2.6V");
-        u8g2.drawStr(84, 17, "2.6V");
+        switch (thresh) {
+            case THRESH_DISPLAY:
+                u8g2.drawStr(9, 35, "- CURRENT THRESHOLDS -");
+                break;
+            case THRESH_BLACK:
+                u8g2.drawStr(9, 35, "BLACK CALIBRATION DONE");    
+                break;
+            case THRESH_WHITE:
+                u8g2.drawStr(9, 35, "WHITE CALIBRATION DONE");
+                break;
+            default:
+                break;
+        }
+
+        float fl = (thresholds.fl/4095.0f) * 3.3;
+        float fr = (thresholds.fr/4095.0f) * 3.3;
+        float rl = (thresholds.rl/4095.0f) * 3.3;
+        float rr = (thresholds.rr/4095.0f) * 3.3;
+
+        snprintf(buf, sizeof(buf), "%.2fV", rl);
+        u8g2.drawStr(25, 60, buf);
+
+        snprintf(buf, sizeof(buf), "%.2fV", rr);
+        u8g2.drawStr(84, 60, buf);
+
+        snprintf(buf, sizeof(buf), "%.2fV", fl);
+        u8g2.drawStr(25, 17, buf);
+
+        snprintf(buf, sizeof(buf), "%.2fV", fr);
+        u8g2.drawStr(84, 17, buf);
 
         u8g2.sendBuffer();
     }

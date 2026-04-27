@@ -9,6 +9,7 @@ namespace audio {
     TANK = 1,
     MENU_CLICK,
     DOOM,
+    DUEL_FATES,
     WIN_XP,
     WIN_95,
     NUM_SONGS

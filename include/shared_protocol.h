@@ -10,12 +10,17 @@ enum MessageType : uint8_t {
     MSG_CMD_WRITE_SETTING       = 0x10,
     MSG_CMD_READ_SETTING        = 0x11,
     MSG_CMD_READ_ALL_SETTINGS   = 0x12,
+    MSG_CMD_REQUEST_THRESHOLDS  = 0x13,
+    MSG_CMD_CALIBRATE_WHITE     = 0x14,
+    MSG_CMD_CALIBRATE_BLACK     = 0x15,
 
     MSG_ACK                     = 0x80,
     MSG_NAK                     = 0x81,
     MSG_STATUS                  = 0x82,
     MSG_SETTING_VALUE           = 0x83,
-    MSG_ALL_SETTINGS            = 0x84
+    MSG_ALL_SETTINGS            = 0x84,
+    MSG_THRESHOLDS              = 0x85
+    
 };
 
 // ---------- Robot modes ----------

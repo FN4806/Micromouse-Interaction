@@ -9,13 +9,19 @@ enum ErrorStates {
   SERIAL_MSG_FAIL
 };
 
+enum ThresholdType {
+  THRESH_DISPLAY,
+  THRESH_WHITE,
+  THRESH_BLACK
+};
+
 namespace display {
     void setup();
 
     void showMenu(MenuState current_menu, int current_options);
     void showError(ErrorStates error_type);
     void showVolume(uint8_t volume);
-    void showThresholds();
+    void showThresholds(ThresholdType thresh);
     void showModeFace(int current_option);
     void showLoading();
 };

@@ -20,9 +20,12 @@ namespace audio {
         DFPSerial.begin(settings::df_baud);
 
         // Initialise DFPlayer Mini serial communication with a catch if initialisation fails
-        if (!df_player.begin(DFPSerial, /*isACK = */true, /*doReset = */true)) {
+        if (!df_player.begin(DFPSerial, /*isACK = */false, /*doReset = */true)) {
             return false;
         }
+        // Note:    The DFPlayer library will endlessly wait for an ACK signal if required, this results in blocking errors and effective crashes. So for now isACK is set to false, meaning no ACK signal is waited for.
+        //          This does mean that we can never be sure commands are recieved or if the module is initialised correctly but since it's only audio, it's not a critical system and this can be accepted.
+
         return true;
     }
 

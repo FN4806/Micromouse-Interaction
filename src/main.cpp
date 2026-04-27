@@ -11,7 +11,7 @@
 MenuState current_menu = MENU_MAIN;
 int current_option = 0;
 
-void DisplayFace() {
+void enterMode() {
   audio::playMenuClick();
   
   display::showModeFace(current_option);
@@ -29,23 +29,34 @@ void DisplayFace() {
 }
 
 
-void NextOption() {
+void nextOption() {
   const uint8_t num_options = menus[current_menu].count;
+
+  if (num_options == 0) return; // Gaurd against div by 0 errors
   current_option = (current_option + 1) % num_options;
+  
   audio::playMenuClick();
   display::showMenu(current_menu, current_option);
 }
 
-void PrevOption() {
+void prevOption() {
   const uint8_t num_options = menus[current_menu].count;
+
+  if (num_options == 0) return; // Gaurd against div by 0 errors
   current_option = (current_option == 0) ? (num_options - 1) : (current_option - 1);
+  
   audio::playMenuClick();
   display::showMenu(current_menu, current_option);
 }
 
 
-void SelectOption() {
+void selectOption() {
   const MenuDef& menu = menus[current_menu];
+
+  if (menu.count == 0 || menu.items == nullptr) {
+    return;
+  }
+
   MenuAction action = menu.items[current_option].action;
 
   switch (action) {
@@ -53,7 +64,7 @@ void SelectOption() {
       ui_state = UI_MODE_RUNNING;
       // Call Line Following UI
       // Call Line Following Sound
-      DisplayFace(); // NEEDS TO BE CHANGED TO SPLIT UP FUNCTIONALITY AND REDUCE EXTRA CONDITIONALS
+      enterMode(); // NEEDS TO BE CHANGED TO SPLIT UP FUNCTIONALITY AND REDUCE EXTRA CONDITIONALS
       // Send Line Following Command to Main Pico
       if (!sendSetModeCommand(MODE_LINE_FOLLOWING)) {
         display::showError(SERIAL_MSG_FAIL);
@@ -65,7 +76,7 @@ void SelectOption() {
       ui_state = UI_MODE_RUNNING;  
       // Call Combat UI
       // Call Combat Sound
-      DisplayFace(); // NEEDS TO BE CHANGED TO SPLIT UP FUNCTIONALITY AND REDUCE EXTRA CONDITIONALS
+      enterMode(); // NEEDS TO BE CHANGED TO SPLIT UP FUNCTIONALITY AND REDUCE EXTRA CONDITIONALS
       // Send Combat Command to Main Pico
       if (!sendSetModeCommand(MODE_COMBAT)) {
         display::showError(SERIAL_MSG_FAIL);
@@ -77,7 +88,7 @@ void SelectOption() {
       ui_state = UI_MODE_RUNNING;
       // Call Obstacle Avoidance UI
       // Call Obstacle Avoidance Sound
-      DisplayFace(); // NEEDS TO BE CHANGED TO SPLIT UP FUNCTIONALITY AND REDUCE EXTRA CONDITIONALS
+      enterMode(); // NEEDS TO BE CHANGED TO SPLIT UP FUNCTIONALITY AND REDUCE EXTRA CONDITIONALS
       // Send Obstacle Avoidance Command to Main Pico
       if (!sendSetModeCommand(MODE_OBSTACLE_AVOIDANCE)) {
         display::showError(SERIAL_MSG_FAIL);
@@ -101,6 +112,11 @@ void SelectOption() {
       display::showMenu(current_menu, current_option);
       break;
 
+    case ACTION_ENTER_COMBAT_MENU:
+      current_menu = MENU_COMBAT;
+      display::showMenu(current_menu, current_option);
+      break;  
+
     case ACTION_VOLUME_SCREEN:
       ui_state = UI_VOLUME_EDIT;
       current_menu = MENU_VOLUME;
@@ -118,17 +134,33 @@ void SelectOption() {
       audio::playStartupSound(ui_settings.startup_music); // Play Sound
       break;
 
+    case ACTION_COMBAT_SOUND_DOOM:
+      ui_settings.combat_music = audio::DOOM; // Store Selection in RAM
+      audio::playStartupSound(ui_settings.combat_music); // Play Sound
+      break;  
+
+    case ACTION_COMBAT_SOUND_DUEL_FATES:
+      ui_settings.combat_music = audio::DUEL_FATES; // Store Selection in RAM
+      audio::playStartupSound(ui_settings.combat_music); // Play Sound
+      break;
+
     case ACTION_CALIBRATE_BLACK:
-      //Call black calibration function
+      //Display loading screen before requesting data
+      calibrateBlack();
+      display::showThresholds(THRESH_BLACK);
+      ui_state = UI_SHOWING_THRESHOLDS;
       break;
 
     case ACTION_CALIBRATE_WHITE:
-      // Call white calibration function
+      //Display loading screen before requesting data
+      calibrateWhite();
+      display::showThresholds(THRESH_WHITE);
+      ui_state = UI_SHOWING_THRESHOLDS;
       break;
 
     case ACTION_READ_THRESHOLDS:
-      // Request thresholds
-      display::showThresholds(); // Display thresholds
+      loadThresholds(); // Read the thresholds from the main pico
+      display::showThresholds(THRESH_DISPLAY); // Display thresholds
       ui_state = UI_SHOWING_THRESHOLDS;
       break;
 
@@ -148,6 +180,10 @@ void SelectOption() {
         case MENU_CALIBRATION:
           current_menu = MENU_MAIN;
           break;
+        case MENU_COMBAT:
+          saveSetting(SETTING_COMBAT_MUSIC, ui_settings.combat_music); // Store RAM combat sound value in EEPROM
+          current_menu = MENU_SOUND;
+          break;
         default:
           current_menu = MENU_MAIN;
           break;
@@ -164,7 +200,7 @@ void SelectOption() {
 void handleButtonPress() {
   switch (ui_state) {
     case UI_NAVIGATING:
-      SelectOption();
+      selectOption();
       break;
 
     case UI_MODE_RUNNING:
@@ -234,8 +270,8 @@ void loop() {
   switch (current_menu) {
 
     case (MENU_VOLUME):
-      while (steps > 0) {ui_settings.volume++; steps--;}
-      while (steps < 0) {ui_settings.volume--; steps++;}
+      while (steps > 0) {(ui_settings.volume < 30) ? ui_settings.volume++ : ui_settings.volume = 30; steps--;}
+      while (steps < 0) {(ui_settings.volume > 0) ? ui_settings.volume-- : ui_settings.volume = 0; steps++;}
       steps =  0;
       audio::setVolume(ui_settings.volume);
       display::showVolume(ui_settings.volume);
@@ -244,8 +280,8 @@ void loop() {
     default:
       if (ui_state != UI_NAVIGATING) break;
 
-      while (steps > 0) {NextOption(); steps--;}
-      while (steps < 0) {PrevOption(); steps++;}
+      while (steps > 0) {nextOption(); steps--;}
+      while (steps < 0) {prevOption(); steps++;}
       steps = 0;
       break;
   }
