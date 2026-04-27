@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SHARED_PROTOCOL_H
+#define SHARED_PROTOCOL_H
+
 #include <Arduino.h>
 
 // ---------- Message types ----------
@@ -66,8 +68,10 @@ enum SettingId : uint8_t {
 // STATUS:
 //   [0] = MSG_STATUS
 //   [1] = sequence number
-//   [2] = current mode
+//   [2] = current mode`
 
 constexpr uint32_t LINK_BAUD = 115200;
 constexpr uint32_t REPLY_TIMEOUT_MS = 200;
 constexpr uint8_t MAX_RETRIES = 3;
+
+#endif

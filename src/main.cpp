@@ -239,6 +239,7 @@ void setup() {
 
   if (!audio::setup()) {
     display::showError(DFPLAYER_INIT_FAIL);
+    Serial.println("DF Player Mini failed to connect");
     while (true) {delay(0);}
   }
 
