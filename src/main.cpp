@@ -126,22 +126,32 @@ void selectOption() {
 
     case ACTION_STARTUP_SOUND_WIN95:
       ui_settings.startup_music = audio::WIN_95; // Store Selection in RAM
-      audio::playStartupSound(ui_settings.startup_music); // Play Sound
+      audio::playModeSound(ui_settings.startup_music); // Play Sound
       break;
 
     case ACTION_STARTUP_SOUND_WINXP:
       ui_settings.startup_music = audio::WIN_XP; // Store Selection in RAM
-      audio::playStartupSound(ui_settings.startup_music); // Play Sound
+      audio::playModeSound(ui_settings.startup_music); // Play Sound
       break;
 
     case ACTION_COMBAT_SOUND_DOOM:
       ui_settings.combat_music = audio::DOOM; // Store Selection in RAM
-      audio::playStartupSound(ui_settings.combat_music); // Play Sound
+      audio::playModeSound(ui_settings.combat_music); // Play Sound
       break;  
 
     case ACTION_COMBAT_SOUND_DUEL_FATES:
       ui_settings.combat_music = audio::DUEL_FATES; // Store Selection in RAM
-      audio::playStartupSound(ui_settings.combat_music); // Play Sound
+      audio::playModeSound(ui_settings.combat_music); // Play Sound
+      break;
+
+    case ACTION_COMBAT_SOUND_VALKYRIES:
+      ui_settings.combat_music = audio::VALKYRIES; // Store Selection in RAM
+      audio::playModeSound(ui_settings.combat_music); // Play Sound
+      break;
+
+    case ACTION_COMBAT_SOUND_TIGER:
+      ui_settings.combat_music = audio::TIGER; // Store Selection in RAM
+      audio::playModeSound(ui_settings.combat_music); // Play Sound
       break;
 
     case ACTION_CALIBRATE_BLACK:
@@ -255,8 +265,10 @@ void setup() {
   loadDefaultSettings();
   loadAllSettings();
 
+  ui_settings.volume = 5;
+
   audio::setVolume(ui_settings.volume);
-  audio::playStartupSound(ui_settings.startup_music);
+  audio::playModeSound(ui_settings.startup_music);
 
   display::showLoading();
   display::showMenu(current_menu, current_option);

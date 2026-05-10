@@ -34,16 +34,18 @@ static const MenuItem calibration_menu_items[] = {
 static const MenuItem combat_menu_items[] = {
     {"Doom", image_Combat_Icon_bits, ACTION_COMBAT_SOUND_DOOM},
     {"Duel of Fates", image_Combat_Icon_bits, ACTION_COMBAT_SOUND_DUEL_FATES},
+    {"Valkyries", image_Combat_Icon_bits, ACTION_COMBAT_SOUND_VALKYRIES},
+    {"Tiger", image_Combat_Icon_bits, ACTION_COMBAT_SOUND_TIGER},
     {"Return", image_Arrow_Left_bits, ACTION_RETURN}
 };
 
 const MenuDef menus[MENU_COUNT] = {
     {main_menu_items, 5},
-    {sound_menu_items, 3},
+    {sound_menu_items, 4},
     {nullptr, 0}, // Special Volume Screen
     {calibration_menu_items, 4},
     {startup_menu_items, 3},
-    {combat_menu_items, 3}
+    {combat_menu_items, 5}
 };
 
 UiInteractionState ui_state = UI_NAVIGATING;
